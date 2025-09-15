@@ -5,7 +5,7 @@ from functools import reduce
 import random
 
 def random_element():
-    return random.randint(0, p)
+    return random.randint(0, p - 1)
 
 def add_points(*points):
     return reduce(add, points, Z1)
@@ -34,8 +34,31 @@ B = (FQ(128486065350455871287888893172307515183924786911123755697753900951123306
 
 # remember to do all arithmetic modulo p
 def commit(a, sL, b, sR, alpha, beta, gamma, tau_1, tau_2):
-    pass
-    # return (A, S, V, T1, T2)
+    # A = <a,G> + <b,H> + alpha*B
+    A = add_points(
+        vector_commit(G, a),
+        vector_commit(H, b),
+        multiply(B, alpha % p),
+    )
+    # S = <sL_vec, G> + <sR_vec, H> + beta*B
+    sL_vec = np.full(len(G), sL, dtype=int)
+    sR_vec = np.full(len(H), sR, dtype=int)
+    S = add_points(
+        vector_commit(G, sL_vec),
+        vector_commit(H, sR_vec),
+        multiply(B, beta % p),
+    )
+    # V = v*G1 + gamma*B, where v = <a,b>
+    v = int(np.inner(a, b) % p)
+    V = add(multiply(G1, v), multiply(B, gamma % p))
+    # T1 = (<a, sR_vec> + <b, sL_vec>) * G1 + tau_1 * B
+    t1_coeff = int((int(sR) * int(np.sum(a)) + int(sL) * int(np.sum(b))) % p)
+    T1 = add(multiply(G1, t1_coeff), multiply(B, tau_1 % p))
+    # T2 = <sL_vec, sR_vec> * G1 + tau_2 * B = (n * sL * sR) * G1 + tau_2 * B
+    n = len(a)
+    t2_coeff = int((n * int(sL) * int(sR)) % p)
+    T2 = add(multiply(G1, t2_coeff), multiply(B, tau_2 % p))
+    return (A, S, V, T1, T2)
 
 
 def evaluate(f_0, f_1, f_2, u):
@@ -44,29 +67,31 @@ def evaluate(f_0, f_1, f_2, u):
 def prove(blinding_0, blinding_1, blinding_2, u):
     # fill this in
     # return pi
-    pass
+    return (blinding_0 + blinding_1 * u + blinding_2 * (u**2)) % p
 
 ## step 0: Prover and verifier agree on G and B
 
 ## step 1: Prover creates the commitments
 a = np.array([89,15,90,22])
 b = np.array([16,18,54,12])
-sL = ...
-sR = ...
-t1 = ...
-t2 = ...
+sL = 1234
+sR = 5678
+# Correct polynomial coefficients for t(x) = <a,b> + (<a,sR_vec> + <b,sL_vec>) x + <sL_vec,sR_vec> x^2
+# t1 = sR*sum(a) + sL*sum(b)
+t1 = (int(sR) * int(a.sum()) + int(sL) * int(b.sum())) % p
+t2 = (len(a) * int(sL) * int(sR)) % p
 
 ### blinding terms
-alpha = ...
-beta = ...
-gamma = ...
-tau_1 = ...
-tau_2 = ...
+alpha = 111
+beta = 222
+gamma = 333
+tau_1 = 444
+tau_2 = 555
 
 A, S, V, T1, T2 = commit(a, sL, b, sR, alpha, beta, gamma, tau_1, tau_2)
 
 ## step 2: Verifier picks u
-u = ...
+u = 1314521
 
 ## step 3: Prover evaluates l(u), r(u), t(u) and creates evaluation proofs
 l_u = evaluate(a, sL, 0, u)
@@ -78,5 +103,6 @@ pi_t = prove(gamma, tau_1, tau_2, u)
 
 ## step 4: Verifier accepts or rejects
 assert t_u == np.mod(np.inner(np.array(l_u), np.array(r_u)), p), "tu !=〈lu, ru〉"
-assert eq(add(A, commit(S, u)), add_points(vector_commit(G, l_u), vector_commit(H, r_u), multiply(B, pi_lr))), "l_u or r_u not evaluated correctly"
-assert eq(add(multiply(G, t_u), multiply(B, pi_t)), add_points(V, multiply(T1, u), multiply(T2, u**2 % p))), "t_u not evaluated correctly"
+assert eq(add(A, multiply(S, u)), add_points(vector_commit(G, l_u), vector_commit(H, r_u), multiply(B, pi_lr))), "l_u or r_u not evaluated correctly"
+assert eq(add(multiply(G1, int(t_u)), multiply(B, pi_t)), add_points(V, multiply(T1, u), multiply(T2, u**2 % p))), "t_u not evaluated correctly"
+print("accept")
