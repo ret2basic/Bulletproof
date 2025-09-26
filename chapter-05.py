@@ -10,6 +10,14 @@ def random_element():
 def add_points(*points):
     return reduce(add, points, Z1)
 
+
+def show_point(label, point):
+    if point == Z1:
+        print(f"{label}: Z1 (point at infinity)")
+    else:
+        x, y = point
+        print(f"{label}: (x={x.n}, y={y.n})")
+
 # if points = G1, G2, G3, G4 and scalars = a,b,c,d vector_commit returns
 # aG1 + bG2 + cG3 + dG4
 def vector_commit(points, scalars):
@@ -81,6 +89,13 @@ sR = 5678
 t1 = (int(sR) * int(a.sum()) + int(sL) * int(b.sum())) % p
 t2 = (len(a) * int(sL) * int(sR)) % p
 
+print(f"a: {a}")
+print(f"b: {b}")
+print(f"sL: {sL}")
+print(f"sR: {sR}")
+print(f"t1: {t1}")
+print(f"t2: {t2}")
+
 ### blinding terms
 alpha = 111
 beta = 222
@@ -88,18 +103,38 @@ gamma = 333
 tau_1 = 444
 tau_2 = 555
 
+print(f"alpha: {alpha}")
+print(f"beta: {beta}")
+print(f"gamma: {gamma}")
+print(f"tau_1: {tau_1}")
+print(f"tau_2: {tau_2}")
+
 A, S, V, T1, T2 = commit(a, sL, b, sR, alpha, beta, gamma, tau_1, tau_2)
+
+show_point("A", A)
+show_point("S", S)
+show_point("V", V)
+show_point("T1", T1)
+show_point("T2", T2)
 
 ## step 2: Verifier picks u
 u = 1314521
+print(f"u: {u}")
 
 ## step 3: Prover evaluates l(u), r(u), t(u) and creates evaluation proofs
 l_u = evaluate(a, sL, 0, u)
 r_u = evaluate(b, sR, 0, u)
 t_u = evaluate(np.inner(a,b), t1, t2, u)
 
+print(f"l_u: {l_u}")
+print(f"r_u: {r_u}")
+print(f"t_u: {t_u}")
+
 pi_lr = prove(alpha, beta, 0, u)
 pi_t = prove(gamma, tau_1, tau_2, u)
+
+print(f"pi_lr: {pi_lr}")
+print(f"pi_t: {pi_t}")
 
 ## step 4: Verifier accepts or rejects
 assert t_u == np.mod(np.inner(np.array(l_u), np.array(r_u)), p), "tu !=〈lu, ru〉"
